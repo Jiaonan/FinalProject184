@@ -1,0 +1,80 @@
+---
+title: "STAT184 Final Project"
+output: html_notebook
+---
+```{r}
+rm(list = ls())
+
+library(mosaic)
+library(mosaicData)
+library(tidyverse)
+library(DataComputing)
+```
+
+```{r}
+googleplaystore <- read.csv("googleplaystore.csv")
+
+googleplaystoreuser<-read_csv("googleplaystore_user_reviews.csv")
+
+```
+
+```{r}
+googleplaystore <- googleplaystore %>%
+  filter(Installs != "0")
+
+options(scipen = 999)
+
+
+googleplaystore$Installs <- gsub(",", "", gsub("\\.", "", googleplaystore$Installs))
+
+
+googleplaystore$Installs <- as.character(googleplaystore$Installs)
+googleplaystore$Installs = substr(googleplaystore$Installs,1,nchar(googleplaystore$Installs)-1)
+
+
+googleplaystore$Installs <- as.numeric(googleplaystore$Installs)
+
+googleplaystore<-googleplaystore%>%filter(Category !="1.9")
+
+googleplaystore<-googleplaystore%>%filter(Rating !="NaN")
+```
+
+```{r}
+top10installedcategories<-googleplaystore%>%
+  group_by(Category)%>%
+  summarise(total_installs=sum(Installs))%>%
+  arrange(desc(total_installs))%>%
+  head(10)%>%
+  ggplot(aes(x=reorder(Category,- total_installs),y= total_installs
+             ,fill=Category))+
+  geom_col()+
+  labs(title ="Top ten installed Categories" ,x="Category")+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+top10installedcategories
+
+
+```
+
+```{r}
+nums_app_cate<-googleplaystore%>%
+  group_by(Category)%>%
+  summarise(total=n())%>%
+  arrange(desc(total))%>%
+  head(10)%>%
+  ggplot(aes(x=reorder(Category,- total),y=total,fill=Category))+
+  geom_col()+
+  labs(title = "Top ten numbers of applications in different categories",x="Category")+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+  
+nums_app_cate
+```
+```{r}
+googleplaystore%>%
+  ggplot()+
+  geom_boxplot(aes(x=Type,y=Rating,fill=Type))
+
+```
+
