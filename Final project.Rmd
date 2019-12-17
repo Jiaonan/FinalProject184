@@ -1,23 +1,35 @@
 ---
 title: "STAT184 Final Project"
+author: "Nan Jiao"
+date: "December 16th,2019"
 output: html_notebook
 ---
+# ALL you need to know in google play store.
+Nowadays,there are too many apps in google play store.For this project ,you may know what the top ten installed categories,How many apps included in each category,the comparision between paid and free applications,the relationship between reviews and rating ,the highest satisfication app and what is the update trend by month.
+
+![](https://i.pinimg.com/originals/1a/49/22/1a49226d155846acb790eeb919f63c8e.jpg)
+
+## Step1 : Load Packages
 ```{r}
 rm(list = ls())
+```
 
+```{r}
 library(mosaic)
 library(mosaicData)
 library(tidyverse)
 library(DataComputing)
+library(lubridate)
 ```
 
+## Step2: Importing and Preparing data
 ```{r}
 googleplaystore <- read.csv("googleplaystore.csv")
 
 googleplaystoreuser<-read_csv("googleplaystore_user_reviews.csv")
-
 ```
 
+## Step3:Clean Tables and Deal with some data
 ```{r}
 googleplaystore <- googleplaystore %>%
   filter(Installs != "0")
@@ -37,8 +49,20 @@ googleplaystore$Installs <- as.numeric(googleplaystore$Installs)
 googleplaystore<-googleplaystore%>%filter(Category !="1.9")
 
 googleplaystore<-googleplaystore%>%filter(Rating !="NaN")
+
+
+googleplaystore$Reviews[is.na(googleplaystore$Reviews)]<-round(mean(googleplaystore$Reviews, na.rm= TRUE))
+
+googleplaystore$Reviews<-as.numeric(googleplaystore$Reviews)
+googleplaystore$Last.Updated <- str_replace_all(googleplaystore$Last.Updated, " ", "")
+googleplaystore$Last.Updated <- mdy(googleplaystore$Last.Updated)
+googleplaystore$Year.Updated <- year(googleplaystore$Last.Updated)
+googleplaystore$Month.Updated <- month(googleplaystore$Last.Updated)
 ```
 
+## Step4:Data Wrangling and Visualization
+
+### Question 1:What are the top ten installed Categories?   
 ```{r}
 top10installedcategories<-googleplaystore%>%
   group_by(Category)%>%
@@ -55,7 +79,10 @@ top10installedcategories
 
 
 ```
-
+```
+Conclusion: Respectively,game,communication,productivity and social apps are the most installed by over one billion people.And it is clear that video players has the lowest number of downloads.
+```
+### Question 2: How many apps included in each category?
 ```{r}
 nums_app_cate<-googleplaystore%>%
   group_by(Category)%>%
@@ -71,10 +98,110 @@ nums_app_cate<-googleplaystore%>%
   
 nums_app_cate
 ```
+```
+Family,Game and tools have the most numbers of applications.There are approximately 1800 apps about family,1100 apps about game and 700 apps about tools.Other categories have nearly same numbers of applications,nearly 300 apps.
+```
+### Question 3:Are the rate of paid questions is higher than the rage of free questions?
+```{r}
+paid_free<-googleplaystore%>%
+  group_by(Type,Category)%>%
+  summarise(total=n())%>%
+  spread(key = Type,value = total,fill = 0)
+paid_free
+  
+```
 ```{r}
 googleplaystore%>%
   ggplot()+
   geom_boxplot(aes(x=Type,y=Rating,fill=Type))
 
 ```
+```
+From the table,We use spread function to create a new data table and we can see no matter which category is,the number of free applications is larger than the figure of paid applications.Next step,we draw a boxplot to compare free applications rating and paid applications rating.From the boxplot,it is clear that paid apps easily got higher rates than did free apps. 
+```
+###Question 4:Which category has the higher average rating?
+```{r}
+googleplaystore%>%
+   group_by(Category)%>%
+  summarise(meanRating = mean(Rating))%>%
+  ggplot(mapping = aes(x = Category,y = meanRating))+
+  geom_col(aes(fill = Category))+
+  geom_line(group=2)+
+  coord_flip()+
+  ggtitle("Average Rating Across Categories")+
+  ylab("Average Rating")+
+  guides(fill=FALSE)
+  
+```
+```
+We can see that education ,events,books and reference and art and desigh have the highest average rate,at 4.5 .On the other hand, although tools has nearly 700 applications more than majority of categories have, its rate is very low.Dating has the lowest average rate among all categories,at 3.8.
+```
+### Question 5:What is the relationship between rating and reviews?
+```{r}
+google_relationship<-googleplaystore%>%select(Rating,Reviews)
+colSums(is.na(google_relationship))
+```
+```{r}
+google_relationship%>%
+  group_by(Rating)%>%
+  summarise(total=sum(Reviews))%>%
+ ggplot(mapping=aes(x=total,y=Rating))+
+  geom_point(shape=7,alpha = 0.3,col="maroon")+
+  geom_smooth(method="lm",se=FALSE)+
+  xlab("Total number of reviews")+
+  ylab("Rating")+
+  ggtitle("Relationship between Rating and Reviews")
 
+```
+```{r}
+relationshiptree<-party::ctree(
+  Rating~Reviews+Installs,
+  data=googleplaystore)
+plot(relationshiptree,type="simple")
+```
+```
+According to two graphs,we can not conclude that the higher number of reviews ,the higher rating they will get, but there is an association between the number of reviews and rating.we can see most points which represent more number of reviews also represent higher rating.For the tree graph ,we know higher number of installs and higher number of reviews are more likely lead to higher ratings.
+```
+### Question 6:For each app, which one has higher proportion of positive sentiment by people?
+```{r}
+app_evaluation<-googleplaystoreuser%>%
+  filter(Sentiment!="nan")%>%
+  group_by(App,Sentiment)%>%
+  mutate(total1=n())%>%
+  group_by(App)%>%
+  mutate(total2=n())%>%
+  filter(total2>30)%>%
+  mutate(p=total1/total2)%>%
+  group_by(App,Sentiment,p)%>%
+  summarise(totalnum=n())%>%
+  filter(Sentiment=="Positive")%>%
+  select(App,Sentiment,p)%>%
+  arrange(desc(p))%>%
+  head(10)
+app_evaluation
+```
+
+```{r}
+app_evaluation%>%
+  ggplot()+
+  geom_point(mapping=aes(x=App,y=p,color=App))+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+```
+For all apps in the google play store,we find that Down Dog:Great Yoga Anywhere which is a sport application has 100 precent satisfaction when all of objects must receive more than 30 sentiments.
+```
+### Question 7:What is update trend by mounth in different years.
+```{r}
+update_trend <- googleplaystore[which(googleplaystore$Year.Updated!=2018),]
+factor_Year <- as.factor(update_trend$Year.Updated)
+ggplot(update_trend, aes(x = Month.Updated, colour = factor_Year))+
+  facet_grid(.~Type)+
+    geom_line(stat = "Count", position = "dodge")+
+    xlab("Month")+
+    ylab("Count")+ 
+    labs(title = "Update trend by Month")
+```
+```
+From the graph ,for free applications, we can see in a year, the number of applications updated always increase with the month grows,and it is also clear that the figure of applications updated in each month increase between 2010 and 2017.For paid applications,we can see that the number of applications seems like same no matter the various of mouth and year.
+```
