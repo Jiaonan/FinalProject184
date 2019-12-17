@@ -27,6 +27,8 @@ library(lubridate)
 googleplaystore <- read.csv("googleplaystore.csv")
 
 googleplaystoreuser<-read_csv("googleplaystore_user_reviews.csv")
+glimpse(googleplaystore)
+glimpse(googleplaystoreuser)
 ```
 
 ## Step3:Clean Tables and Deal with some data
